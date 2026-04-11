@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SlopeML — Surrogate Stability Analyzer</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- ═══════════════════════════════ HEADER ═══════════════════════════════ -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-mark">⬡</span>
+        <span class="logo-text">SlopeML</span>
+        <span class="logo-sub">/ Surrogate Analyzer</span>
+      </div>
+      <nav class="header-nav">
+        <a href="#simulator" class="nav-link active">Simulator</a>
+        <a href="#theory"    class="nav-link">Theory</a>
+        <a href="#about"     class="nav-link">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ════════════════════════════════ HERO ════════════════════════════════ -->
+  <section class="hero" id="top">
+    <div class="hero-bg">
+      <canvas id="heroCanvas"></canvas>
+    </div>
+    <div class="hero-content">
+      <div class="hero-tag">LEM · Bishop · Janbu · ML Surrogate</div>
+      <h1 class="hero-title">
+        Slope Stability<br/>
+        <em>in milliseconds.</em>
+      </h1>
+      <p class="hero-desc">
+        A physics-grounded surrogate model that replaces slow Limit Equilibrium
+        simulations with instant ML predictions. Enter soil and geometry
+        parameters — get the Factor of Safety in real time.
+      </p>
+      <a href="#simulator" class="cta-btn">
+        <span>Run Simulation</span>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+    </div>
+    <div class="hero-diagram">
+      <canvas id="slopePreview" width="480" height="280"></canvas>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════ SIMULATOR ══════════════════════════════ -->
+  <section class="simulator-section" id="simulator">
+    <div class="section-label">// SIMULATION ENGINE</div>
+    <h2 class="section-title">Parameter Input</h2>
+
+    <div class="sim-layout">
+
+      <!-- ── INPUT PANEL ── -->
+      <div class="panel input-panel">
+        <div class="panel-header">
+          <span class="panel-icon">⬡</span>
+          <span>Geotechnical Parameters</span>
+        </div>
+
+        <div class="param-grid">
+
+          <!-- Soil params -->
+          <div class="param-group">
+            <div class="group-label">Soil Properties</div>
+
+            <div class="param-row">
+              <label>
+                <span class="param-symbol">c</span>
+                <span class="param-name">Cohesion</span>
+                <span class="param-unit">kPa</span>
+              </label>
+              <div class="slider-wrap">
+                <input type="range" id="c" min="5" max="40" step="0.5" value="20" class="slider"/>
+                <input type="number" id="c-num" min="5" max="40" step="0.5" value="20" class="num-input"/>
+              </div>
+            </div>
+
+            <div class="param-row">
+              <label>
+                <span class="param-symbol">φ</span>
+                <span class="param-name">Friction Angle</span>
+                <span class="param-unit">°</span>
+              </label>
+              <div class="slider-wrap">
+                <input type="range" id="phi" min="20" max="40" step="0.5" value="30" class="slider"/>
+                <input type="number" id="phi-num" min="20" max="40" step="0.5" value="30" class="num-input"/>
+              </div>
+            </div>
+
+            <div class="param-row">
+              <label>
+                <span class="param-symbol">E</span>
+                <span class="param-name">Young's Modulus</span>
+                <span class="param-unit">MPa</span>
+              </label>
+              <div class="slider-wrap">
+                <input type="range" id="E" min="10" max="100" step="1" value="50" class="slider"/>
+                <input type="number" id="E-num" min="10" max="100" step="1" value="50" class="num-input"/>
+              </div>
+            </div>
+
+            <div class="param-row">
+              <label>
+                <span class="param-symbol">γ</span>
+                <span class="param-name">Unit Weight</span>
+                <span class="param-unit">kN/m³</span>
+              </label>
+              <div class="slider-wrap">
+                <input type="range" id="gamma" min="16" max="22" step="0.1" value="18" class="slider"/>
+                <input type="number" id="gamma-num" min="16" max="22" step="0.1" value="18" class="num-input"/>
+              </div>
+            </div>
+          </div>
+
+          <!-- Geometry params -->
+          <div class="param-group">
+            <div class="group-label">Geometry</div>
+
+            <div class="param-row">
+              <label>
+                <span class="param-symbol">β</span>
+                <span class="param-name">Slope Angle</span>
+                <span class="param-unit">°</span>
+              </label>
+              <div class="slider-wrap">
+                <input type="range" id="beta" min="30" max="50" step="0.5" value="40" class="slider"/>
+                <input type="number" id="beta-num" min="30" max="50" step="0.5" value="40" class="num-input"/>
+              </div>
+            </div>
+
+            <div class="param-row">
+              <label>
+                <span class="param-symbol">H</span>
+                <span class="param-name">Slope Height</span>
+                <span class="param-unit">m</span>
+              </label>
+              <div class="slider-wrap">
+                <input type="range" id="H" min="10" max="30" step="0.5" value="15" class="slider"/>
+                <input type="number" id="H-num" min="10" max="30" step="0.5" value="15" class="num-input"/>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /param-grid -->
+
+        <div class="sim-actions">
+          <button id="runBtn" class="run-btn">
+            <span class="run-label">Compute FoS</span>
+            <span class="run-spinner" id="spinner" style="display:none">⟳</span>
+          </button>
+          <button id="resetBtn" class="reset-btn">Reset</button>
+        </div>
+
+      </div><!-- /input-panel -->
+
+      <!-- ── RESULTS PANEL ── -->
+      <div class="panel results-panel" id="resultsPanel">
+        <div class="panel-header">
+          <span class="panel-icon">◈</span>
+          <span>Analysis Results</span>
+        </div>
+
+        <div class="results-placeholder" id="resultsPlaceholder">
+          <div class="placeholder-icon">⬡</div>
+          <div class="placeholder-text">Set parameters and click<br/><strong>Compute FoS</strong></div>
+        </div>
+
+        <div class="results-content" id="resultsContent" style="display:none">
+
+          <!-- FoS gauges -->
+          <div class="fos-gauges">
+            <div class="gauge-card" id="bishopCard">
+              <div class="gauge-method">Bishop</div>
+              <div class="gauge-value" id="fosbishop">—</div>
+              <div class="gauge-label">Factor of Safety</div>
+              <div class="gauge-bar-wrap">
+                <div class="gauge-bar" id="bishopBar"></div>
+              </div>
+              <div class="gauge-status" id="bishopStatus"></div>
+            </div>
+            <div class="gauge-card" id="janbuCard">
+              <div class="gauge-method">Janbu</div>
+              <div class="gauge-value" id="fosjanbu">—</div>
+              <div class="gauge-label">Factor of Safety</div>
+              <div class="gauge-bar-wrap">
+                <div class="gauge-bar" id="janbuBar"></div>
+              </div>
+              <div class="gauge-status" id="janbuStatus"></div>
+            </div>
+          </div>
+
+          <!-- Displacement -->
+          <div class="disp-card">
+            <div class="disp-label">Max Displacement (estimated)</div>
+            <div class="disp-value" id="umax">—</div>
+            <div class="disp-unit">mm</div>
+          </div>
+
+          <!-- Slip circle canvas -->
+          <div class="canvas-wrap">
+            <div class="canvas-label">Critical Slip Surface</div>
+            <canvas id="slipCanvas" width="420" height="240"></canvas>
+          </div>
+
+          <!-- Parameter summary -->
+          <div class="param-summary" id="paramSummary"></div>
+
+        </div><!-- /results-content -->
+
+      </div><!-- /results-panel -->
+
+    </div><!-- /sim-layout -->
+
+  </section>
+
+  <!-- ══════════════════════════════ SENSITIVITY ══════════════════════════════ -->
+  <section class="sensitivity-section" id="sensitivity">
+    <div class="section-label">// SENSITIVITY EXPLORER</div>
+    <h2 class="section-title">One-Parameter Sweep</h2>
+    <p class="section-desc">Hold all other parameters at current values and vary one to see how FoS responds.</p>
+
+    <div class="sweep-controls">
+      <div class="sweep-select-wrap">
+        <label class="sweep-label">Vary parameter:</label>
+        <select id="sweepParam" class="sweep-select">
+          <option value="c">c — Cohesion (kPa)</option>
+          <option value="phi">φ — Friction Angle (°)</option>
+          <option value="E">E — Young's Modulus (MPa)</option>
+          <option value="gamma">γ — Unit Weight (kN/m³)</option>
+          <option value="beta">β — Slope Angle (°)</option>
+          <option value="H">H — Slope Height (m)</option>
+        </select>
+      </div>
+      <button id="sweepBtn" class="run-btn small">Run Sweep</button>
+    </div>
+
+    <div class="chart-container">
+      <canvas id="sweepChart" width="800" height="320"></canvas>
+      <div class="chart-placeholder" id="chartPlaceholder">
+        Select a parameter and click <strong>Run Sweep</strong>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════ THEORY ═══════════════════════════════ -->
+  <section class="theory-section" id="theory">
+    <div class="section-label">// METHODOLOGY</div>
+    <h2 class="section-title">How It Works</h2>
+
+    <div class="theory-grid">
+
+      <div class="theory-card">
+        <div class="theory-num">01</div>
+        <h3>Limit Equilibrium</h3>
+        <p>The solver divides the potential failure mass into vertical slices and applies moment/force equilibrium. Bishop's Simplified and Janbu's Simplified methods are both implemented with full iterative convergence.</p>
+        <div class="theory-formula">
+          FoS = Σ[(c·b + W·tanφ)/mα] / Σ[W·sinα]
+        </div>
+      </div>
+
+      <div class="theory-card">
+        <div class="theory-num">02</div>
+        <h3>Critical Circle Search</h3>
+        <p>A 15×15 grid search over slip circle centres followed by 200 random perturbations locates the circle yielding the minimum FoS — the true critical failure surface.</p>
+        <div class="theory-formula">
+          min FoS over (cx, cy, R) ∈ domain
+        </div>
+      </div>
+
+      <div class="theory-card">
+        <div class="theory-num">03</div>
+        <h3>Dataset Generation</h3>
+        <p>Latin Hypercube Sampling over 6 parameters generates 1000 well-spread simulations covering the full design space without clustering or gaps.</p>
+        <div class="theory-formula">
+          [c, φ, E, γ, β, H] → [FoS_B, FoS_J, u_max]
+        </div>
+      </div>
+
+      <div class="theory-card">
+        <div class="theory-num">04</div>
+        <h3>ML Surrogate</h3>
+        <p>XGBoost, LightGBM, MLP and GPR are trained on the LEM dataset. The best model achieves R² > 0.97 on held-out test data with inference at ~0.01 ms per sample.</p>
+        <div class="theory-formula">
+          Speed-up: ~50,000× over direct LEM
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════ ABOUT ════════════════════════════════ -->
+  <section class="about-section" id="about">
+    <div class="about-inner">
+      <div class="section-label">// PROJECT INFO</div>
+      <h2 class="section-title">About This Project</h2>
+      <p>
+        This interface is the frontend for a 4-month geotechnical ML research project.
+        The backend Python modules implement the full pipeline: LEM solver → dataset
+        generation → surrogate training → SHAP explainability. This UI visualizes
+        the simulation directly in the browser using the same mathematics.
+      </p>
+      <div class="stack-chips">
+        <span class="chip">Python 3.x</span>
+        <span class="chip">XGBoost</span>
+        <span class="chip">LightGBM</span>
+        <span class="chip">scikit-learn</span>
+        <span class="chip">SHAP</span>
+        <span class="chip">Bishop LEM</span>
+        <span class="chip">Janbu LEM</span>
+        <span class="chip">Latin Hypercube</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════ FOOTER ════════════════════════════════ -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <span class="logo-mark">⬡</span>
+      <span>SlopeML — ML Surrogate for Geotechnical Slope Stability</span>
+      <span class="footer-right">LEM · Bishop · Janbu · XGBoost</span>
+    </div>
+  </footer>
+
+  <script src="js/lem.js"></script>
+  <script src="js/draw.js"></script>
+  <script src="js/chart.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
