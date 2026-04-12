@@ -4,13 +4,742 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>SlopeML — Surrogate Stability Analyzer</title>
-  <link rel="stylesheet" href="css/style.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800&display=swap');
+/* ═══════════════════════════════════════════════════════════════
+   SlopeML — Stylesheet
+   Aesthetic: Industrial Engineering — dark slate, amber accents,
+   monospace data feel, structured grid layouts
+═══════════════════════════════════════════════════════════════ */
+
+/* ── RESET & BASE ──────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #0d0f14;
+  --bg2:       #141720;
+  --bg3:       #1c2030;
+  --border:    #2a2f42;
+  --border2:   #353c54;
+  --amber:     #f0a500;
+  --amber2:    #ffc234;
+  --amber-dim: rgba(240,165,0,0.12);
+  --teal:      #2dd4bf;
+  --red:       #f87171;
+  --green:     #4ade80;
+  --yellow:    #facc15;
+  --text:      #e2e8f0;
+  --text2:     #94a3b8;
+  --text3:     #64748b;
+  --mono:      'Space Mono', monospace;
+  --sans:      'DM Sans', sans-serif;
+  --display:   'Syne', sans-serif;
+  --radius:    6px;
+  --radius2:   12px;
+  --shadow:    0 4px 24px rgba(0,0,0,0.5);
+  --glow:      0 0 20px rgba(240,165,0,0.15);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── SCROLLBAR ──────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ── HEADER ─────────────────────────────────────────────────────── */
+.site-header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  background: rgba(13,15,20,0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  height: 60px;
+}
+.header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  height: 100%;
+  padding: 0 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.logo-mark {
+  color: var(--amber);
+  font-size: 1.3rem;
+  animation: rotate 8s linear infinite;
+}
+@keyframes rotate { to { transform: rotate(360deg); } }
+.logo-text {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.logo-sub {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text3);
+  margin-top: 2px;
+}
+.header-nav { display: flex; gap: 2rem; }
+.nav-link {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text3);
+  text-decoration: none;
+  transition: color .2s;
+  padding-bottom: 2px;
+  border-bottom: 1px solid transparent;
+}
+.nav-link:hover, .nav-link.active {
+  color: var(--amber);
+  border-bottom-color: var(--amber);
+}
+
+/* ── HERO ─────────────────────────────────────────────────────── */
+.hero {
+  min-height: 100vh;
+  padding-top: 60px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-left: 2rem;
+  padding-right: 2rem;
+  gap: 3rem;
+  position: relative;
+}
+.hero-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+#heroCanvas { width: 100%; height: 100%; }
+
+.hero-content { padding: 4rem 0; }
+.hero-tag {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--amber);
+  background: var(--amber-dim);
+  border: 1px solid rgba(240,165,0,0.3);
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 3px;
+  margin-bottom: 1.5rem;
+}
+.hero-title {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(2.4rem, 5vw, 4rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin-bottom: 1.2rem;
+  color: var(--text);
+}
+.hero-title em {
+  font-style: normal;
+  color: var(--amber);
+  display: block;
+}
+.hero-desc {
+  color: var(--text2);
+  max-width: 480px;
+  margin-bottom: 2rem;
+  line-height: 1.7;
+}
+.cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--amber);
+  color: #0d0f14;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  padding: 12px 24px;
+  border-radius: var(--radius);
+  transition: background .2s, transform .15s, box-shadow .2s;
+  box-shadow: 0 0 0 0 rgba(240,165,0,0);
+}
+.cta-btn:hover {
+  background: var(--amber2);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(240,165,0,0.3);
+}
+.hero-diagram {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+#slopePreview {
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  background: var(--bg2);
+  max-width: 100%;
+}
+
+/* ── SECTION COMMON ─────────────────────────────────────────────── */
+section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 5rem 2rem;
+}
+.section-label {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 0.6rem;
+}
+.section-title {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  letter-spacing: -0.03em;
+  margin-bottom: 2.5rem;
+  color: var(--text);
+}
+.section-desc {
+  color: var(--text2);
+  max-width: 560px;
+  margin-bottom: 2rem;
+  margin-top: -1.5rem;
+}
+
+/* ── SIMULATOR ─────────────────────────────────────────────────── */
+.simulator-section { padding-top: 6rem; }
+.sim-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+/* ── PANELS ─────────────────────────────────────────────────────── */
+.panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text2);
+  background: var(--bg3);
+}
+.panel-icon { color: var(--amber); font-size: 1rem; }
+
+/* ── PARAMETERS ─────────────────────────────────────────────────── */
+.param-grid { padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+.param-group {}
+.group-label {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 14px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.param-row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.param-row label {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  cursor: default;
+}
+.param-symbol {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--amber);
+  font-weight: 700;
+  min-width: 18px;
+}
+.param-name {
+  font-size: 0.82rem;
+  color: var(--text2);
+}
+.param-unit {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--text3);
+  margin-left: auto;
+}
+.slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.slider {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border2);
+  outline: none;
+  cursor: pointer;
+}
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 6px rgba(240,165,0,0.5);
+  transition: transform .15s;
+}
+.slider::-webkit-slider-thumb:hover { transform: scale(1.25); }
+.num-input {
+  width: 64px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  padding: 4px 8px;
+  text-align: right;
+  outline: none;
+  transition: border-color .2s;
+}
+.num-input:focus { border-color: var(--amber); }
+
+/* ── BUTTONS ─────────────────────────────────────────────────────── */
+.sim-actions {
+  display: flex;
+  gap: 10px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--bg3);
+}
+.run-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--amber);
+  color: #0d0f14;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: none;
+  border-radius: var(--radius);
+  padding: 11px 20px;
+  cursor: pointer;
+  transition: background .2s, transform .15s, box-shadow .2s;
+}
+.run-btn:hover {
+  background: var(--amber2);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(240,165,0,0.25);
+}
+.run-btn:active { transform: translateY(0); }
+.run-btn.small { flex: 0 0 auto; padding: 9px 18px; }
+.run-spinner {
+  display: inline-block;
+  animation: spin .7s linear infinite;
+  font-size: 1rem;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.reset-btn {
+  background: transparent;
+  color: var(--text2);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 11px 16px;
+  cursor: pointer;
+  transition: border-color .2s, color .2s;
+}
+.reset-btn:hover { border-color: var(--text2); color: var(--text); }
+
+/* ── RESULTS ─────────────────────────────────────────────────────── */
+.results-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 14px;
+  color: var(--text3);
+  text-align: center;
+  min-height: 300px;
+}
+.placeholder-icon {
+  font-size: 2.5rem;
+  color: var(--border2);
+  animation: pulse 2.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50%       { opacity: 0.9; transform: scale(1.1); }
+}
+.placeholder-text { font-size: 0.85rem; line-height: 1.6; }
+
+.results-content { padding: 20px; }
+
+/* FoS Gauges */
+.fos-gauges {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.gauge-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: center;
+  transition: border-color .3s;
+}
+.gauge-card.stable   { border-color: var(--green); }
+.gauge-card.marginal { border-color: var(--yellow); }
+.gauge-card.critical { border-color: var(--red); }
+.gauge-method {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 6px;
+}
+.gauge-value {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 2.2rem;
+  line-height: 1;
+  color: var(--amber);
+  margin-bottom: 4px;
+  transition: color .3s;
+}
+.gauge-card.stable   .gauge-value { color: var(--green); }
+.gauge-card.marginal .gauge-value { color: var(--yellow); }
+.gauge-card.critical .gauge-value { color: var(--red); }
+.gauge-label {
+  font-size: 0.72rem;
+  color: var(--text3);
+  margin-bottom: 10px;
+}
+.gauge-bar-wrap {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.gauge-bar {
+  height: 100%;
+  border-radius: 2px;
+  width: 0%;
+  transition: width .8s cubic-bezier(.4,0,.2,1), background .3s;
+  background: var(--amber);
+}
+.gauge-status {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.gauge-card.stable   .gauge-status { color: var(--green); }
+.gauge-card.marginal .gauge-status { color: var(--yellow); }
+.gauge-card.critical .gauge-status { color: var(--red); }
+
+/* Displacement */
+.disp-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.disp-label {
+  font-size: 0.78rem;
+  color: var(--text2);
+  flex: 1;
+}
+.disp-value {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 1.3rem;
+  color: var(--teal);
+}
+.disp-unit {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text3);
+}
+
+/* Slip canvas */
+.canvas-wrap {
+  margin-bottom: 16px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.canvas-label {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text3);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+#slipCanvas { display: block; width: 100%; }
+
+/* Param summary */
+.param-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.param-chip {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 3px 8px;
+  color: var(--text3);
+}
+.param-chip span { color: var(--amber); }
+
+/* ── SENSITIVITY ──────────────────────────────────────────────────── */
+.sensitivity-section {
+  border-top: 1px solid var(--border);
+  padding-top: 5rem;
+}
+.sweep-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.sweep-label {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text2);
+}
+.sweep-select {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  padding: 8px 14px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color .2s;
+}
+.sweep-select:focus { border-color: var(--amber); }
+.chart-container {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  padding: 24px;
+  position: relative;
+  min-height: 200px;
+}
+.chart-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text3);
+  font-size: 0.85rem;
+  text-align: center;
+}
+#sweepChart { display: block; width: 100%; }
+
+/* ── THEORY ─────────────────────────────────────────────────────── */
+.theory-section {
+  border-top: 1px solid var(--border);
+}
+.theory-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+.theory-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  padding: 24px;
+  transition: border-color .2s, transform .2s;
+}
+.theory-card:hover {
+  border-color: var(--border2);
+  transform: translateY(-2px);
+}
+.theory-num {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 2rem;
+  color: var(--border2);
+  margin-bottom: 8px;
+  line-height: 1;
+}
+.theory-card h3 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 10px;
+  color: var(--text);
+}
+.theory-card p {
+  font-size: 0.82rem;
+  color: var(--text2);
+  line-height: 1.65;
+  margin-bottom: 14px;
+}
+.theory-formula {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--amber);
+  background: var(--amber-dim);
+  border: 1px solid rgba(240,165,0,0.2);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+}
+
+/* ── ABOUT ─────────────────────────────────────────────────────── */
+.about-section {
+  border-top: 1px solid var(--border);
+}
+.about-inner { max-width: 700px; }
+.about-inner p {
+  color: var(--text2);
+  line-height: 1.8;
+  margin-bottom: 2rem;
+}
+.stack-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 4px 12px;
+  color: var(--text2);
+}
+
+/* ── FOOTER ─────────────────────────────────────────────────────── */
+.site-footer {
+  border-top: 1px solid var(--border);
+  padding: 1.5rem 2rem;
+  background: var(--bg2);
+}
+.footer-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text3);
+}
+.footer-right { margin-left: auto; }
+
+/* ── ENTRY ANIMATIONS ───────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.hero-tag, .hero-title, .hero-desc, .cta-btn {
+  animation: fadeUp .7s ease both;
+}
+.hero-tag   { animation-delay: .1s; }
+.hero-title { animation-delay: .2s; }
+.hero-desc  { animation-delay: .35s; }
+.cta-btn    { animation-delay: .5s; }
+.hero-diagram { animation: fadeUp .8s ease .3s both; }
+
+/* ── RESPONSIVE ─────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
+    min-height: auto;
+    padding-top: 80px;
+    padding-bottom: 3rem;
+  }
+  .hero-diagram { display: none; }
+  .sim-layout   { grid-template-columns: 1fr; }
+  .theory-grid  { grid-template-columns: 1fr; }
+  .fos-gauges   { grid-template-columns: 1fr 1fr; }
+  .param-row    { grid-template-columns: 1fr; gap: 8px; }
+}
+@media (max-width: 600px) {
+  .header-nav { display: none; }
+  .fos-gauges { grid-template-columns: 1fr; }
+  .sweep-controls { flex-direction: column; align-items: flex-start; }
+}
+
+  </style>
 </head>
 <body>
 
-  <!-- ═══════════════════════════════ HEADER ═══════════════════════════════ -->
+<!-- ═══════════════════════════════ HEADER ═══════════════════════════════ -->
   <header class="site-header">
     <div class="header-inner">
       <div class="logo">
@@ -332,9 +1061,1060 @@
     </div>
   </footer>
 
-  <script src="js/lem.js"></script>
-  <script src="js/draw.js"></script>
-  <script src="js/chart.js"></script>
-  <script src="js/app.js"></script>
+  
+
+<script>
+/**
+ * lem.js — Limit Equilibrium Method solver (JavaScript port)
+ * Bishop's Simplified + Janbu's Simplified
+ * Exact same mathematics as the Python backend (01_lem_solver.py)
+ */
+
+// ── Geometry ──────────────────────────────────────────────────────────────
+
+function buildSlopeGeometry(H, betaDeg) {
+  const betaRad = betaDeg * Math.PI / 180;
+  const horizontalRun = H / Math.tan(betaRad);
+  return {
+    toeX: 0, toeY: 0,
+    crestX: horizontalRun, crestY: H,
+    H, betaRad, betaDeg, horizontalRun
+  };
+}
+
+function slopeSurfaceY(x, geo) {
+  if (x <= geo.toeX)   return 0;
+  if (x >= geo.crestX) return geo.H;
+  return ((x - geo.toeX) / (geo.crestX - geo.toeX)) * geo.H;
+}
+
+// ── Slice discretisation ──────────────────────────────────────────────────
+
+function discretizeCircle(cx, cy, R, geo, nSlices = 30) {
+  const disc = R * R - cy * cy;
+  if (disc <= 0) return null;
+  let xLeft  = cx - Math.sqrt(disc);
+  let xRight = cx + Math.sqrt(disc);
+  xLeft  = Math.max(xLeft,  geo.toeX);
+  xRight = Math.min(xRight, geo.crestX + geo.H / Math.tan(geo.betaRad) * 0.5);
+  if (xRight - xLeft < 0.01 * geo.H) return null;
+
+  const slices = [];
+  const step = (xRight - xLeft) / nSlices;
+
+  for (let i = 0; i < nSlices; i++) {
+    const xl = xLeft + i * step;
+    const xr = xl + step;
+    const xm = (xl + xr) / 2;
+    const w  = xr - xl;
+    const dBase = R * R - (xm - cx) * (xm - cx);
+    if (dBase < 0) continue;
+    const baseY  = cy - Math.sqrt(dBase);
+    const surfY  = slopeSurfaceY(xm, geo);
+    const hSoil  = surfY - baseY;
+    if (hSoil <= 0) continue;
+    let sinAlpha = (xm - cx) / R;
+    sinAlpha = Math.max(-0.98, Math.min(0.98, sinAlpha));
+    const alpha = Math.asin(sinAlpha);
+    slices.push({ xm, width: w, alpha, hSoil, baseY, surfY });
+  }
+  return slices.length >= 3 ? slices : null;
+}
+
+// ── Bishop's Simplified ───────────────────────────────────────────────────
+
+function bishopFoS(slices, c, phiDeg, gamma) {
+  const phi = phiDeg * Math.PI / 180;
+  const tanPhi = Math.tan(phi);
+  const Ws     = slices.map(s => s.hSoil * s.width * gamma);
+  const alphas = slices.map(s => s.alpha);
+  const bs     = slices.map(s => s.width);
+
+  const sumDriving = Ws.reduce((acc, W, i) => acc + W * Math.sin(alphas[i]), 0);
+  if (sumDriving <= 0) return null;
+
+  let fos = 1.5;
+  for (let iter = 0; iter < 200; iter++) {
+    let num = 0;
+    for (let i = 0; i < slices.length; i++) {
+      let mAlpha = Math.cos(alphas[i]) + Math.sin(alphas[i]) * tanPhi / fos;
+      if (Math.abs(mAlpha) < 1e-6) mAlpha = 1e-6;
+      num += (c * bs[i] + Ws[i] * tanPhi) / mAlpha;
+    }
+    const fosNew = num / sumDriving;
+    if (Math.abs(fosNew - fos) < 1e-5) { fos = fosNew; break; }
+    fos = 0.5 * fos + 0.5 * fosNew;
+  }
+  return (fos > 0.2 && fos < 10) ? +fos.toFixed(4) : null;
+}
+
+// ── Janbu's Simplified ────────────────────────────────────────────────────
+
+function janbuFoS(slices, c, phiDeg, gamma) {
+  const phi = phiDeg * Math.PI / 180;
+  const tanPhi = Math.tan(phi);
+  const Ws     = slices.map(s => s.hSoil * s.width * gamma);
+  const alphas = slices.map(s => s.alpha);
+  const bs     = slices.map(s => s.width);
+
+  const sumDriving = Ws.reduce((acc, W, i) => acc + W * Math.tan(alphas[i]), 0);
+  if (Math.abs(sumDriving) < 1e-6) return null;
+
+  let fos = 1.5;
+  for (let iter = 0; iter < 200; iter++) {
+    let num = 0;
+    for (let i = 0; i < slices.length; i++) {
+      let nAlpha = Math.cos(alphas[i]) ** 2 * (1 + Math.tan(alphas[i]) * tanPhi / fos);
+      if (Math.abs(nAlpha) < 1e-6) nAlpha = 1e-6;
+      num += (c * bs[i] + Ws[i] * tanPhi) / nAlpha;
+    }
+    const fosNew = num / sumDriving;
+    if (Math.abs(fosNew - fos) < 1e-5) { fos = fosNew; break; }
+    fos = 0.5 * fos + 0.5 * fosNew;
+  }
+  const hAvg = slices.reduce((a, s) => a + s.hSoil, 0) / slices.length;
+  const xVals = slices.map(s => s.xm);
+  const L = Math.max(...xVals) - Math.min(...xVals) || 1;
+  const f0 = 1 + 0.031 * (hAvg / L);
+  const fc = fos * f0;
+  return (fc > 0.2 && fc < 10) ? +fc.toFixed(4) : null;
+}
+
+// ── Critical slip circle search ───────────────────────────────────────────
+
+function findCriticalFoS(c, phi, gamma, H, beta, nGrid = 12, nRandom = 150) {
+  const geo = buildSlopeGeometry(H, beta);
+  const cxMin = geo.toeX - 0.5 * H;
+  const cxMax = geo.crestX + 0.5 * H;
+  const cyMin = H * 0.5;
+  const cyMax = H * 3.0;
+
+  let bestFoS = Infinity;
+  let bestCx = cxMin, bestCy = cyMin, bestR = H * 1.5;
+  let bestSlices = null;
+
+  // Grid search
+  for (let gi = 0; gi < nGrid; gi++) {
+    const cx = cxMin + (cxMax - cxMin) * gi / (nGrid - 1);
+    for (let gj = 0; gj < nGrid; gj++) {
+      const cy = cyMin + (cyMax - cyMin) * gj / (nGrid - 1);
+      const R0 = Math.sqrt((cx - geo.toeX) ** 2 + cy * cy);
+      for (let rk = 0; rk < 4; rk++) {
+        const R = R0 * (0.95 + rk * 0.15);
+        const slices = discretizeCircle(cx, cy, R, geo, 30);
+        if (!slices) continue;
+        const fb = bishopFoS(slices, c, phi, gamma);
+        if (fb && fb < bestFoS) {
+          bestFoS = fb; bestCx = cx; bestCy = cy; bestR = R; bestSlices = slices;
+        }
+      }
+    }
+  }
+
+  // Random refinement
+  const spread = H * 0.4;
+  const rng = mulberry32(42);
+  for (let k = 0; k < nRandom; k++) {
+    const cx = bestCx + (rng() - 0.5) * 2 * spread;
+    const cy = Math.max(bestCy + (rng() - 0.5) * spread, H * 0.3);
+    const R  = Math.max(
+      Math.sqrt((cx - geo.toeX) ** 2 + cy * cy) * (0.9 + rng() * 0.3),
+      H * 0.8
+    );
+    const slices = discretizeCircle(cx, cy, R, geo, 30);
+    if (!slices) continue;
+    const fb = bishopFoS(slices, c, phi, gamma);
+    if (fb && fb < bestFoS) {
+      bestFoS = fb; bestCx = cx; bestCy = cy; bestR = R; bestSlices = slices;
+    }
+  }
+
+  const fosJ = bestSlices ? janbuFoS(bestSlices, c, phi, gamma) : null;
+  return {
+    FoS_bishop: bestFoS === Infinity ? null : bestFoS,
+    FoS_janbu:  fosJ,
+    cx: bestCx, cy: bestCy, R: bestR,
+    geo, slices: bestSlices
+  };
+}
+
+// ── Displacement estimate ─────────────────────────────────────────────────
+
+function estimateDisplacement(FoS, H, E_MPa, gamma) {
+  const E_kPa = E_MPa * 1000;
+  const u_base = (gamma * H * H) / E_kPa * 1000; // mm
+  let amp;
+  if (FoS <= 1.0)      amp = 10;
+  else if (FoS < 1.1)  amp = 5 + (1.1 - FoS) / 0.1 * 5;
+  else if (FoS < 2.0)  amp = 1 + 4 / Math.pow(FoS - 0.9, 1.2);
+  else                 amp = 1;
+  return +(u_base * amp).toFixed(3);
+}
+
+// ── Seeded PRNG (Mulberry32) ──────────────────────────────────────────────
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+// ── Main entry ────────────────────────────────────────────────────────────
+
+function runLEM(c, phi, E, gamma, beta, H) {
+  const result = findCriticalFoS(c, phi, gamma, H, beta, 12, 150);
+  const u = result.FoS_bishop
+    ? estimateDisplacement(result.FoS_bishop, H, E, gamma)
+    : null;
+  return {
+    FoS_bishop: result.FoS_bishop,
+    FoS_janbu:  result.FoS_janbu,
+    u_max_mm:   u,
+    cx: result.cx, cy: result.cy, R: result.R,
+    geo: result.geo, slices: result.slices,
+    converged: !!result.FoS_bishop
+  };
+}
+
+/**
+ * draw.js — Canvas rendering for slope geometry and critical slip circle
+ */
+
+// ── Colour palette (matches CSS variables) ────────────────────────────────
+const C = {
+  bg:       '#141720',
+  bg2:      '#1c2030',
+  border:   '#2a2f42',
+  amber:    '#f0a500',
+  teal:     '#2dd4bf',
+  red:      '#f87171',
+  green:    '#4ade80',
+  yellow:   '#facc15',
+  soil:     '#a07850',
+  soilDark: '#7a5c38',
+  sky:      '#0d0f14',
+  grid:     'rgba(42,47,66,0.6)',
+  slipLine: '#f87171',
+  slipFill: 'rgba(248,113,113,0.08)',
+  centre:   '#f0a500',
+  water:    'rgba(45,212,191,0.15)',
+};
+
+// ── Hero preview (animated slope sketch) ─────────────────────────────────
+
+function drawHeroPreview() {
+  const canvas = document.getElementById('slopePreview');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  let t = 0;
+
+  function frame() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = C.bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // Gentle background grid
+    ctx.strokeStyle = C.grid;
+    ctx.lineWidth = 0.5;
+    for (let x = 0; x < W; x += 30) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += 30) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    // Parameters for preview
+    const sH = 120, beta = 40, HR = sH / Math.tan(beta * Math.PI / 180);
+    const ox = 60, oy = H - 40;
+    const tx = ox, ty = oy;
+    const cx2 = ox + HR, cy2 = oy - sH;
+
+    // Sky gradient
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, oy - sH);
+    skyGrad.addColorStop(0, '#0a0c10');
+    skyGrad.addColorStop(1, '#141720');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, W, oy - sH);
+
+    // Soil body
+    ctx.beginPath();
+    ctx.moveTo(0, oy);
+    ctx.lineTo(tx, ty);
+    ctx.lineTo(cx2, cy2);
+    ctx.lineTo(W, cy2);
+    ctx.lineTo(W, oy);
+    ctx.closePath();
+    const soilGrad = ctx.createLinearGradient(0, cy2, 0, oy);
+    soilGrad.addColorStop(0, '#6b4c2a');
+    soilGrad.addColorStop(1, '#3d2a16');
+    ctx.fillStyle = soilGrad;
+    ctx.fill();
+
+    // Slope surface line
+    ctx.beginPath();
+    ctx.moveTo(0, oy); ctx.lineTo(tx, ty); ctx.lineTo(cx2, cy2); ctx.lineTo(W, cy2);
+    ctx.strokeStyle = C.amber + '80';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Animated slip circle
+    const phase = t * 0.015;
+    const scx = ox + HR * 0.45 + Math.sin(phase) * 8;
+    const scy = cy2 - sH * 0.6 + Math.cos(phase * 0.7) * 5;
+    const sR  = sH * 1.35;
+
+    // Filled arc (failure mass highlight)
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(scx, scy, sR, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    ctx.fillStyle = C.slipFill;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+
+    // Circle arc
+    ctx.beginPath();
+    ctx.arc(scx, scy, sR, 0, Math.PI * 2);
+    ctx.strokeStyle = C.slipLine;
+    ctx.lineWidth = 1.8;
+    ctx.setLineDash([6, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Centre mark
+    ctx.beginPath();
+    ctx.arc(scx, scy, 4, 0, Math.PI * 2);
+    ctx.fillStyle = C.centre;
+    ctx.fill();
+
+    // Slices visualization
+    const sliceX = Math.max(scx - sR, tx);
+    const sliceXEnd = Math.min(scx + sR, cx2 + (W - cx2) * 0.5);
+    const nSlices = 12;
+    for (let i = 0; i < nSlices; i++) {
+      const xm = sliceX + (sliceXEnd - sliceX) * (i + 0.5) / nSlices;
+      const dArc = sR * sR - (xm - scx) * (xm - scx);
+      if (dArc < 0) continue;
+      const arcY = scy - Math.sqrt(dArc);
+      let surfY;
+      if (xm <= tx)       surfY = oy;
+      else if (xm >= cx2) surfY = cy2;
+      else surfY = oy - (xm - tx) / HR * sH;
+      if (arcY > surfY) continue;
+      ctx.beginPath();
+      ctx.moveTo(xm, arcY);
+      ctx.lineTo(xm, surfY);
+      ctx.strokeStyle = 'rgba(240,165,0,0.15)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // Dimension annotation
+    ctx.beginPath();
+    ctx.moveTo(cx2 + 20, cy2);
+    ctx.lineTo(cx2 + 20, oy);
+    ctx.strokeStyle = C.teal + '80';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.font = '10px Space Mono, monospace';
+    ctx.fillStyle = C.teal;
+    ctx.fillText('H', cx2 + 25, (cy2 + oy) / 2 + 4);
+
+    // FoS badge
+    const fosVal = (1.42 + Math.sin(phase * 0.5) * 0.03).toFixed(3);
+    ctx.fillStyle = C.bg2;
+    ctx.fillRect(W - 100, 12, 86, 30);
+    ctx.strokeStyle = C.amber + '60';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(W - 100, 12, 86, 30);
+    ctx.font = '9px Space Mono, monospace';
+    ctx.fillStyle = C.amber;
+    ctx.fillText('FoS (Bishop)', W - 95, 24);
+    ctx.font = 'bold 12px Space Mono, monospace';
+    ctx.fillText(fosVal, W - 72, 36);
+
+    t++;
+    requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+// ── Result slip circle drawing ────────────────────────────────────────────
+
+function drawSlipCircle(result, params) {
+  const canvas = document.getElementById('slipCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const CW = canvas.width, CH = canvas.height;
+
+  const { geo, cx, cy, R, slices, FoS_bishop } = result;
+  const { H, betaDeg, toeX, crestX } = geo;
+
+  // Compute world bounding box
+  const pad = H * 0.35;
+  const wxMin = toeX - pad;
+  const wxMax = crestX + pad * 1.5;
+  const wyMin = -H * 0.25;
+  const wyMax = cy + R * 0.25 + H * 0.15;
+
+  function toCanvas(wx, wy) {
+    const margin = 24;
+    const sx = margin + (wx - wxMin) / (wxMax - wxMin) * (CW - 2 * margin);
+    const sy = (CH - margin) - (wy - wyMin) / (wyMax - wyMin) * (CH - 2 * margin);
+    return [sx, sy];
+  }
+
+  ctx.clearRect(0, 0, CW, CH);
+  ctx.fillStyle = C.bg;
+  ctx.fillRect(0, 0, CW, CH);
+
+  // Grid
+  ctx.strokeStyle = C.grid;
+  ctx.lineWidth = 0.5;
+  for (let wx = Math.ceil(wxMin); wx <= wxMax; wx += Math.max(1, Math.round(H / 5))) {
+    const [sx] = toCanvas(wx, 0);
+    ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, CH); ctx.stroke();
+  }
+
+  // Soil body
+  const pts = [
+    [wxMin, wyMin],
+    [toeX,  0],
+    [crestX, H],
+    [wxMax,  H],
+    [wxMax,  wyMin],
+  ];
+  ctx.beginPath();
+  pts.forEach(([wx, wy], i) => {
+    const [sx, sy] = toCanvas(wx, wy);
+    i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
+  });
+  ctx.closePath();
+  const sg = ctx.createLinearGradient(0, 0, 0, CH);
+  sg.addColorStop(0, '#5a3e22');
+  sg.addColorStop(1, '#2e1c0e');
+  ctx.fillStyle = sg;
+  ctx.fill();
+
+  // Slope surface
+  const surfPts = [[wxMin, 0], [toeX, 0], [crestX, H], [wxMax, H]];
+  ctx.beginPath();
+  surfPts.forEach(([wx, wy], i) => {
+    const [sx, sy] = toCanvas(wx, wy);
+    i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
+  });
+  ctx.strokeStyle = C.amber;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Slices
+  if (slices) {
+    slices.forEach(s => {
+      const [bx, by] = toCanvas(s.xm, s.baseY);
+      const [tx2, ty2] = toCanvas(s.xm, s.surfY);
+      ctx.beginPath();
+      ctx.moveTo(bx, by); ctx.lineTo(tx2, ty2);
+      ctx.strokeStyle = 'rgba(240,165,0,0.2)';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    });
+  }
+
+  // Failure mass highlight
+  if (slices && slices.length > 0) {
+    ctx.beginPath();
+    const first = slices[0], last = slices[slices.length - 1];
+    const [fx, fy] = toCanvas(first.xm, first.surfY);
+    ctx.moveTo(fx, fy);
+    slices.forEach(s => {
+      const [sx, sy] = toCanvas(s.xm, s.surfY);
+      ctx.lineTo(sx, sy);
+    });
+    const [lx, ly] = toCanvas(last.xm, last.baseY);
+    ctx.lineTo(lx, ly);
+    slices.slice().reverse().forEach(s => {
+      const [sx, sy] = toCanvas(s.xm, s.baseY);
+      ctx.lineTo(sx, sy);
+    });
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(248,113,113,0.1)';
+    ctx.fill();
+  }
+
+  // Slip circle
+  const [ccx, ccy] = toCanvas(cx, cy);
+  const [edgeX] = toCanvas(cx + R, cy);
+  const rPx = Math.abs(edgeX - ccx);
+  ctx.beginPath();
+  ctx.arc(ccx, ccy, rPx, 0, Math.PI * 2);
+  ctx.strokeStyle = C.slipLine;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Centre
+  ctx.beginPath();
+  ctx.arc(ccx, ccy, 5, 0, Math.PI * 2);
+  ctx.fillStyle = C.centre;
+  ctx.fill();
+
+  // Labels
+  ctx.font = '10px Space Mono, monospace';
+  ctx.fillStyle = C.amber + 'cc';
+  ctx.fillText(`H = ${params.H} m`, ...toCanvas(toeX + 2, H * 0.5));
+
+  // FoS badge
+  ctx.fillStyle = C.bg2;
+  roundRect(ctx, CW - 120, 10, 108, 34, 4);
+  ctx.fill();
+  ctx.strokeStyle = statusColor(FoS_bishop) + '80';
+  ctx.lineWidth = 1;
+  roundRect(ctx, CW - 120, 10, 108, 34, 4);
+  ctx.stroke();
+  ctx.font = '9px Space Mono, monospace';
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillText('FoS (Bishop)', CW - 113, 22);
+  ctx.font = 'bold 14px Space Mono, monospace';
+  ctx.fillStyle = statusColor(FoS_bishop);
+  ctx.fillText(FoS_bishop ? FoS_bishop.toFixed(3) : '—', CW - 88, 36);
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function statusColor(fos) {
+  if (!fos)       return '#94a3b8';
+  if (fos >= 1.5) return C.green;
+  if (fos >= 1.0) return C.yellow;
+  return C.red;
+}
+
+function statusLabel(fos) {
+  if (!fos)       return '—';
+  if (fos >= 1.5) return 'STABLE';
+  if (fos >= 1.25) return 'MARGINAL';
+  if (fos >= 1.0) return 'CRITICAL';
+  return 'FAILURE';
+}
+
+function statusClass(fos) {
+  if (!fos) return '';
+  if (fos >= 1.5) return 'stable';
+  if (fos >= 1.0) return 'marginal';
+  return 'critical';
+}
+
+// ── Hero canvas (particle field) ──────────────────────────────────────────
+
+function initHeroCanvas() {
+  const canvas = document.getElementById('heroCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const N = 60;
+  const dots = Array.from({ length: N }, () => ({
+    x: Math.random() * window.innerWidth,
+    y: Math.random() * window.innerHeight,
+    r: Math.random() * 1.5 + 0.5,
+    vx: (Math.random() - 0.5) * 0.3,
+    vy: (Math.random() - 0.5) * 0.3,
+    opacity: Math.random() * 0.4 + 0.1,
+  }));
+
+  function frame() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    dots.forEach(d => {
+      d.x += d.vx; d.y += d.vy;
+      if (d.x < 0) d.x = canvas.width;
+      if (d.x > canvas.width) d.x = 0;
+      if (d.y < 0) d.y = canvas.height;
+      if (d.y > canvas.height) d.y = 0;
+
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(240,165,0,${d.opacity})`;
+      ctx.fill();
+    });
+
+    // Connections
+    for (let i = 0; i < dots.length; i++) {
+      for (let j = i + 1; j < dots.length; j++) {
+        const dx = dots[i].x - dots[j].x;
+        const dy = dots[i].y - dots[j].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 120) {
+          ctx.beginPath();
+          ctx.moveTo(dots[i].x, dots[i].y);
+          ctx.lineTo(dots[j].x, dots[j].y);
+          ctx.strokeStyle = `rgba(240,165,0,${0.06 * (1 - dist / 120)})`;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+/**
+ * chart.js — Minimal line chart renderer (pure Canvas, no dependencies)
+ * Used for the one-parameter sensitivity sweep.
+ */
+
+/**
+ * Draw a line chart on #sweepChart canvas.
+ * @param {number[]} xValues  - x axis data
+ * @param {number[]} yBishop  - FoS Bishop values
+ * @param {number[]} yJanbu   - FoS Janbu values
+ * @param {string}   xLabel   - label for x axis
+ */
+function drawSweepChart(xValues, yBishop, yJanbu, xLabel) {
+  const canvas = document.getElementById('sweepChart');
+  if (!canvas) return;
+
+  // Proper DPR scaling
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width  = rect.width  * dpr;
+  canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const W = rect.width, H = rect.height;
+  const ml = 56, mr = 24, mt = 24, mb = 48;
+  const pw = W - ml - mr, ph = H - mt - mb;
+
+  // Ranges
+  const allY = [...yBishop, ...yJanbu].filter(Boolean);
+  const yMin = Math.max(0, Math.min(...allY) - 0.1);
+  const yMax = Math.max(...allY) + 0.1;
+  const xMin = Math.min(...xValues), xMax = Math.max(...xValues);
+
+  function sx(v) { return ml + (v - xMin) / (xMax - xMin) * pw; }
+  function sy(v) { return mt + ph - (v - yMin) / (yMax - yMin) * ph; }
+
+  // Background
+  ctx.fillStyle = '#141720';
+  ctx.fillRect(0, 0, W, H);
+
+  // FoS threshold bands
+  const bands = [
+    { y1: 1.5, y2: yMax, color: 'rgba(74,222,128,0.04)', label: null },
+    { y1: 1.0, y2: 1.5,  color: 'rgba(250,204,21,0.05)', label: null },
+    { y1: yMin, y2: 1.0, color: 'rgba(248,113,113,0.07)', label: null },
+  ];
+  bands.forEach(b => {
+    const y1c = Math.max(sy(b.y2), mt);
+    const y2c = Math.min(sy(b.y1), mt + ph);
+    if (y2c > y1c) {
+      ctx.fillStyle = b.color;
+      ctx.fillRect(ml, y1c, pw, y2c - y1c);
+    }
+  });
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(42,47,66,0.8)';
+  ctx.lineWidth = 0.5;
+  const yTicks = 5;
+  for (let i = 0; i <= yTicks; i++) {
+    const yv = yMin + (yMax - yMin) * i / yTicks;
+    const yc = sy(yv);
+    ctx.beginPath(); ctx.moveTo(ml, yc); ctx.lineTo(ml + pw, yc); ctx.stroke();
+    ctx.font = '9px Space Mono, monospace';
+    ctx.fillStyle = '#64748b';
+    ctx.textAlign = 'right';
+    ctx.fillText(yv.toFixed(2), ml - 6, yc + 3);
+  }
+  const xTicks = Math.min(8, xValues.length);
+  for (let i = 0; i <= xTicks; i++) {
+    const xv = xMin + (xMax - xMin) * i / xTicks;
+    const xc = sx(xv);
+    ctx.beginPath(); ctx.moveTo(xc, mt); ctx.lineTo(xc, mt + ph); ctx.stroke();
+    ctx.font = '9px Space Mono, monospace';
+    ctx.fillStyle = '#64748b';
+    ctx.textAlign = 'center';
+    ctx.fillText(xv.toFixed(1), xc, mt + ph + 16);
+  }
+
+  // Threshold lines
+  [{ v: 1.5, c: '#4ade80', label: 'FoS=1.5' }, { v: 1.0, c: '#f87171', label: 'FoS=1.0' }]
+    .forEach(t => {
+      if (t.v >= yMin && t.v <= yMax) {
+        ctx.beginPath();
+        ctx.moveTo(ml, sy(t.v)); ctx.lineTo(ml + pw, sy(t.v));
+        ctx.strokeStyle = t.c + '60';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 3]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.font = '9px Space Mono, monospace';
+        ctx.fillStyle = t.c + 'aa';
+        ctx.textAlign = 'left';
+        ctx.fillText(t.label, ml + 4, sy(t.v) - 4);
+      }
+    });
+
+  // Axis borders
+  ctx.strokeStyle = '#2a2f42';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(ml, mt); ctx.lineTo(ml, mt + ph); ctx.lineTo(ml + pw, mt + ph);
+  ctx.stroke();
+
+  // Axis labels
+  ctx.font = '10px Space Mono, monospace';
+  ctx.fillStyle = '#94a3b8';
+  ctx.textAlign = 'center';
+  ctx.fillText(xLabel, ml + pw / 2, H - 6);
+  ctx.save();
+  ctx.translate(14, mt + ph / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('Factor of Safety', 0, 0);
+  ctx.restore();
+
+  // Draw line helper
+  function drawLine(ys, color, dash = []) {
+    const pts = xValues.map((x, i) => [sx(x), sy(ys[i])]).filter(([, y]) => isFinite(y));
+    if (pts.length < 2) return;
+    ctx.beginPath();
+    ctx.moveTo(...pts[0]);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(...pts[i]);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash(dash);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Dots
+    pts.forEach(([x, y]) => {
+      ctx.beginPath();
+      ctx.arc(x, y, 3, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+    });
+  }
+
+  drawLine(yBishop, '#f0a500');
+  drawLine(yJanbu,  '#2dd4bf', [5, 3]);
+
+  // Legend
+  const lx = ml + pw - 160, ly = mt + 12;
+  ctx.fillStyle = 'rgba(20,23,32,0.9)';
+  ctx.fillRect(lx - 4, ly - 2, 164, 36);
+  ctx.strokeStyle = '#2a2f42';
+  ctx.lineWidth = 0.5;
+  ctx.strokeRect(lx - 4, ly - 2, 164, 36);
+
+  ctx.fillStyle = '#f0a500';
+  ctx.fillRect(lx, ly + 4, 18, 2);
+  ctx.font = '9px Space Mono, monospace';
+  ctx.fillStyle = '#94a3b8';
+  ctx.textAlign = 'left';
+  ctx.fillText('Bishop', lx + 24, ly + 8);
+
+  ctx.strokeStyle = '#2dd4bf';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath(); ctx.moveTo(lx, ly + 20); ctx.lineTo(lx + 18, ly + 20); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillText('Janbu', lx + 24, ly + 24);
+}
+
+/**
+ * app.js — Main application controller
+ * Wires sliders ↔ number inputs, handles run/reset/sweep actions,
+ * updates results panel and canvases.
+ */
+
+// ── Parameter defaults & bounds ───────────────────────────────────────────
+const PARAMS = {
+  c:     { default: 20,  min: 5,   max: 40,  step: 0.5, unit: 'kPa' },
+  phi:   { default: 30,  min: 20,  max: 40,  step: 0.5, unit: '°'   },
+  E:     { default: 50,  min: 10,  max: 100, step: 1,   unit: 'MPa' },
+  gamma: { default: 18,  min: 16,  max: 22,  step: 0.1, unit: 'kN/m³'},
+  beta:  { default: 40,  min: 30,  max: 50,  step: 0.5, unit: '°'   },
+  H:     { default: 15,  min: 10,  max: 30,  step: 0.5, unit: 'm'   },
+};
+
+const SWEEP_RANGES = {
+  c:     { min: 5,   max: 40,  label: 'Cohesion c (kPa)',       n: 28 },
+  phi:   { min: 20,  max: 40,  label: 'Friction Angle φ (°)',   n: 24 },
+  E:     { min: 10,  max: 100, label: "Young's Modulus E (MPa)", n: 30 },
+  gamma: { min: 16,  max: 22,  label: 'Unit Weight γ (kN/m³)',  n: 20 },
+  beta:  { min: 30,  max: 50,  label: 'Slope Angle β (°)',      n: 24 },
+  H:     { min: 10,  max: 30,  label: 'Slope Height H (m)',     n: 24 },
+};
+
+// ── Initialise ────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  bindSliders();
+  updateSliderColors();
+  initHeroCanvas();
+  drawHeroPreview();
+  bindButtons();
+  bindSweep();
+  bindNav();
+});
+
+// ── Slider ↔ Number input sync ────────────────────────────────────────────
+function bindSliders() {
+  Object.keys(PARAMS).forEach(id => {
+    const slider = document.getElementById(id);
+    const numIn  = document.getElementById(id + '-num');
+    if (!slider || !numIn) return;
+
+    slider.addEventListener('input', () => {
+      numIn.value = slider.value;
+      updateSliderColors();
+      schedulePreview();
+    });
+    numIn.addEventListener('input', () => {
+      const v = parseFloat(numIn.value);
+      const p = PARAMS[id];
+      if (!isNaN(v) && v >= p.min && v <= p.max) {
+        slider.value = v;
+        updateSliderColors();
+        schedulePreview();
+      }
+    });
+  });
+}
+
+function updateSliderColors() {
+  Object.keys(PARAMS).forEach(id => {
+    const slider = document.getElementById(id);
+    if (!slider) return;
+    const p   = PARAMS[id];
+    const pct = (slider.value - p.min) / (p.max - p.min) * 100;
+    slider.style.background =
+      `linear-gradient(to right, #f0a500 ${pct}%, #353c54 ${pct}%)`;
+  });
+}
+
+function getValues() {
+  return {
+    c:     parseFloat(document.getElementById('c').value),
+    phi:   parseFloat(document.getElementById('phi').value),
+    E:     parseFloat(document.getElementById('E').value),
+    gamma: parseFloat(document.getElementById('gamma').value),
+    beta:  parseFloat(document.getElementById('beta').value),
+    H:     parseFloat(document.getElementById('H').value),
+  };
+}
+
+// ── Live slope preview while adjusting ───────────────────────────────────
+let previewTimer = null;
+function schedulePreview() {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => {}, 200);
+}
+
+// ── Buttons ───────────────────────────────────────────────────────────────
+function bindButtons() {
+  document.getElementById('runBtn').addEventListener('click', runSimulation);
+  document.getElementById('resetBtn').addEventListener('click', resetParams);
+}
+
+function runSimulation() {
+  const btn     = document.getElementById('runBtn');
+  const label   = btn.querySelector('.run-label');
+  const spinner = document.getElementById('spinner');
+  label.style.opacity = '0';
+  spinner.style.display = 'inline-block';
+  btn.disabled = true;
+
+  setTimeout(() => {
+    const p = getValues();
+    const t0 = performance.now();
+    const result = runLEM(p.c, p.phi, p.E, p.gamma, p.beta, p.H);
+    const elapsed = (performance.now() - t0).toFixed(1);
+
+    label.style.opacity = '1';
+    spinner.style.display = 'none';
+    btn.disabled = false;
+
+    if (!result.converged) {
+      showError('Simulation did not converge. Try different parameters.');
+      return;
+    }
+    renderResults(result, p, elapsed);
+  }, 80);
+}
+
+function resetParams() {
+  Object.keys(PARAMS).forEach(id => {
+    const slider = document.getElementById(id);
+    const numIn  = document.getElementById(id + '-num');
+    if (slider) slider.value = PARAMS[id].default;
+    if (numIn)  numIn.value  = PARAMS[id].default;
+  });
+  updateSliderColors();
+  document.getElementById('resultsPlaceholder').style.display = '';
+  document.getElementById('resultsContent').style.display = 'none';
+}
+
+// ── Render results ────────────────────────────────────────────────────────
+function renderResults(result, params, elapsed) {
+  document.getElementById('resultsPlaceholder').style.display = 'none';
+  const content = document.getElementById('resultsContent');
+  content.style.display = '';
+
+  // Bishop gauge
+  setGauge('bishop', result.FoS_bishop);
+  setGauge('janbu',  result.FoS_janbu);
+
+  // Displacement
+  document.getElementById('umax').textContent =
+    result.u_max_mm !== null ? result.u_max_mm.toFixed(1) : '—';
+
+  // Slip circle canvas
+  drawSlipCircle(result, params);
+
+  // Parameter chips
+  const chips = [
+    ['c', params.c, 'kPa'],
+    ['φ', params.phi, '°'],
+    ['E', params.E, 'MPa'],
+    ['γ', params.gamma, 'kN/m³'],
+    ['β', params.beta, '°'],
+    ['H', params.H, 'm'],
+  ];
+  document.getElementById('paramSummary').innerHTML = chips
+    .map(([sym, val, unit]) =>
+      `<div class="param-chip"><span>${sym}</span> = ${val} ${unit}</div>`)
+    .join('');
+
+  // Animate in
+  content.querySelectorAll('.gauge-card, .disp-card, .canvas-wrap').forEach((el, i) => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(12px)';
+    el.style.transition = `opacity .4s ease ${i * 0.08}s, transform .4s ease ${i * 0.08}s`;
+    requestAnimationFrame(() => {
+      el.style.opacity = '1';
+      el.style.transform = 'translateY(0)';
+    });
+  });
+}
+
+function setGauge(name, fos) {
+  const card   = document.getElementById(name + 'Card');
+  const valEl  = document.getElementById('fos' + name);
+  const bar    = document.getElementById(name + 'Bar');
+  const status = document.getElementById(name + 'Status');
+
+  if (!card) return;
+
+  const cls = statusClass(fos);
+  card.className = 'gauge-card ' + cls;
+  valEl.textContent = fos ? fos.toFixed(3) : '—';
+  status.textContent = statusLabel(fos);
+
+  // Bar: map FoS 0→3+ to 0→100%
+  const pct = fos ? Math.min(100, (fos / 3) * 100) : 0;
+  const color = statusColor(fos);
+  setTimeout(() => {
+    bar.style.width = pct + '%';
+    bar.style.background = color;
+    bar.style.boxShadow = `0 0 8px ${color}80`;
+  }, 100);
+}
+
+function showError(msg) {
+  document.getElementById('resultsPlaceholder').style.display = '';
+  document.getElementById('resultsPlaceholder').innerHTML =
+    `<div class="placeholder-icon" style="color:#f87171">⚠</div>
+     <div class="placeholder-text" style="color:#f87171">${msg}</div>`;
+  document.getElementById('resultsContent').style.display = 'none';
+}
+
+// ── Sensitivity sweep ─────────────────────────────────────────────────────
+function bindSweep() {
+  document.getElementById('sweepBtn').addEventListener('click', runSweep);
+}
+
+function runSweep() {
+  const paramId = document.getElementById('sweepParam').value;
+  const base    = getValues();
+  const range   = SWEEP_RANGES[paramId];
+  const btn     = document.getElementById('sweepBtn');
+
+  btn.disabled = true;
+  btn.textContent = 'Computing…';
+
+  // Async to let UI update
+  setTimeout(() => {
+    const xVals = [], yBishop = [], yJanbu = [];
+    const n = range.n;
+
+    for (let i = 0; i <= n; i++) {
+      const v = range.min + (range.max - range.min) * i / n;
+      const p = { ...base, [paramId]: v };
+      const res = runLEM(p.c, p.phi, p.E, p.gamma, p.beta, p.H);
+      xVals.push(+v.toFixed(3));
+      yBishop.push(res.FoS_bishop || null);
+      yJanbu.push(res.FoS_janbu   || null);
+    }
+
+    document.getElementById('chartPlaceholder').style.display = 'none';
+    drawSweepChart(xVals, yBishop, yJanbu, range.label);
+
+    btn.disabled = false;
+    btn.textContent = 'Run Sweep';
+  }, 20);
+}
+
+// ── Smooth nav scroll ─────────────────────────────────────────────────────
+function bindNav() {
+  document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', e => {
+      document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+      link.classList.add('active');
+    });
+  });
+
+  // Scroll spy
+  const sections = ['simulator', 'theory', 'about'];
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        document.querySelectorAll('.nav-link').forEach(l => {
+          l.classList.toggle('active',
+            l.getAttribute('href') === '#' + entry.target.id);
+        });
+      }
+    });
+  }, { threshold: 0.4 });
+  sections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) observer.observe(el);
+  });
+}
+
+</script>
 </body>
 </html>
