@@ -23,9 +23,9 @@
   --text:      #e2e8f0;
   --text2:     #94a3b8;
   --text3:     #64748b;
-  --mono:      'Space Mono', monospace;
-  --sans:      'DM Sans', sans-serif;
-  --display:   'Syne', sans-serif;
+  --mono:    'Space Mono', 'Courier New', monospace;
+  --sans:    'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --display: 'Syne', Georgia, serif;
   --radius:    6px;
   --radius2:   12px;
   --shadow:    0 4px 24px rgba(0,0,0,0.5);
