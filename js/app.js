@@ -12,6 +12,8 @@ const PARAMS = {
   gamma: { default: 18,  min: 16,  max: 22,  step: 0.1, unit: 'kN/m³'},
   beta:  { default: 40,  min: 30,  max: 50,  step: 0.5, unit: '°'   },
   H:     { default: 15,  min: 10,  max: 30,  step: 0.5, unit: 'm'   },
+  ru:    { default: 0.0, min: 0,   max: 0.45,step: 0.01,unit: 'u/γh'},
+  kh:    { default: 0.0, min: 0,   max: 0.30,step: 0.01,unit: 'g'   },
 };
 
 const SWEEP_RANGES = {
@@ -21,6 +23,8 @@ const SWEEP_RANGES = {
   gamma: { min: 16,  max: 22,  label: 'Unit Weight γ (kN/m³)',  n: 20 },
   beta:  { min: 30,  max: 50,  label: 'Slope Angle β (°)',      n: 24 },
   H:     { min: 10,  max: 30,  label: 'Slope Height H (m)',     n: 24 },
+  ru:    { min: 0,   max: 0.45,label: 'Pore Pressure Ratio ru', n: 20 },
+  kh:    { min: 0,   max: 0.30,label: 'Seismic Coeff kh (g)',  n: 20 },
 };
 
 // ── Initialise ────────────────────────────────────────────────────────────
@@ -77,6 +81,8 @@ function getValues() {
     gamma: parseFloat(document.getElementById('gamma').value),
     beta:  parseFloat(document.getElementById('beta').value),
     H:     parseFloat(document.getElementById('H').value),
+    ru:    parseFloat(document.getElementById('ru') ? document.getElementById('ru').value : 0),
+    kh:    parseFloat(document.getElementById('kh') ? document.getElementById('kh').value : 0),
   };
 }
 
@@ -104,7 +110,7 @@ function runSimulation() {
   setTimeout(() => {
     const p = getValues();
     const t0 = performance.now();
-    const result = runLEM(p.c, p.phi, p.E, p.gamma, p.beta, p.H);
+    const result = runLEM(p.c, p.phi, p.E, p.gamma, p.beta, p.H, p.ru, p.kh);
     const elapsed = (performance.now() - t0).toFixed(1);
 
     label.style.opacity = '1';

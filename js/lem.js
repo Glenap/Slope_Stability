@@ -57,14 +57,14 @@ function discretizeCircle(cx, cy, R, geo, nSlices = 30) {
 
 // ── Bishop's Simplified ───────────────────────────────────────────────────
 
-function bishopFoS(slices, c, phiDeg, gamma) {
+function bishopFoS(slices, c, phiDeg, gamma, ru = 0.0, kh = 0.0) {
   const phi = phiDeg * Math.PI / 180;
   const tanPhi = Math.tan(phi);
   const Ws     = slices.map(s => s.hSoil * s.width * gamma);
   const alphas = slices.map(s => s.alpha);
   const bs     = slices.map(s => s.width);
 
-  const sumDriving = Ws.reduce((acc, W, i) => acc + W * Math.sin(alphas[i]), 0);
+  const sumDriving = Ws.reduce((acc, W, i) => acc + W * (Math.sin(alphas[i]) + kh * Math.cos(alphas[i])), 0);
   if (sumDriving <= 0) return null;
 
   let fos = 1.5;
@@ -73,7 +73,7 @@ function bishopFoS(slices, c, phiDeg, gamma) {
     for (let i = 0; i < slices.length; i++) {
       let mAlpha = Math.cos(alphas[i]) + Math.sin(alphas[i]) * tanPhi / fos;
       if (Math.abs(mAlpha) < 1e-6) mAlpha = 1e-6;
-      num += (c * bs[i] + Ws[i] * tanPhi) / mAlpha;
+      num += (c * bs[i] + Ws[i] * (1.0 - ru) * tanPhi) / mAlpha;
     }
     const fosNew = num / sumDriving;
     if (Math.abs(fosNew - fos) < 1e-5) { fos = fosNew; break; }
@@ -84,14 +84,14 @@ function bishopFoS(slices, c, phiDeg, gamma) {
 
 // ── Janbu's Simplified ────────────────────────────────────────────────────
 
-function janbuFoS(slices, c, phiDeg, gamma) {
+function janbuFoS(slices, c, phiDeg, gamma, ru = 0.0, kh = 0.0) {
   const phi = phiDeg * Math.PI / 180;
   const tanPhi = Math.tan(phi);
   const Ws     = slices.map(s => s.hSoil * s.width * gamma);
   const alphas = slices.map(s => s.alpha);
   const bs     = slices.map(s => s.width);
 
-  const sumDriving = Ws.reduce((acc, W, i) => acc + W * Math.tan(alphas[i]), 0);
+  const sumDriving = Ws.reduce((acc, W, i) => acc + W * Math.tan(alphas[i]) + kh * W, 0);
   if (Math.abs(sumDriving) < 1e-6) return null;
 
   let fos = 1.5;
@@ -100,7 +100,7 @@ function janbuFoS(slices, c, phiDeg, gamma) {
     for (let i = 0; i < slices.length; i++) {
       let nAlpha = Math.cos(alphas[i]) ** 2 * (1 + Math.tan(alphas[i]) * tanPhi / fos);
       if (Math.abs(nAlpha) < 1e-6) nAlpha = 1e-6;
-      num += (c * bs[i] + Ws[i] * tanPhi) / nAlpha;
+      num += (c * bs[i] + Ws[i] * (1.0 - ru) * tanPhi) / nAlpha;
     }
     const fosNew = num / sumDriving;
     if (Math.abs(fosNew - fos) < 1e-5) { fos = fosNew; break; }
@@ -116,7 +116,7 @@ function janbuFoS(slices, c, phiDeg, gamma) {
 
 // ── Critical slip circle search ───────────────────────────────────────────
 
-function findCriticalFoS(c, phi, gamma, H, beta, nGrid = 12, nRandom = 150) {
+function findCriticalFoS(c, phi, gamma, H, beta, ru = 0.0, kh = 0.0, nGrid = 12, nRandom = 150) {
   const geo = buildSlopeGeometry(H, beta);
   const cxMin = geo.toeX - 0.5 * H;
   const cxMax = geo.crestX + 0.5 * H;
@@ -137,7 +137,7 @@ function findCriticalFoS(c, phi, gamma, H, beta, nGrid = 12, nRandom = 150) {
         const R = R0 * (0.95 + rk * 0.15);
         const slices = discretizeCircle(cx, cy, R, geo, 30);
         if (!slices) continue;
-        const fb = bishopFoS(slices, c, phi, gamma);
+        const fb = bishopFoS(slices, c, phi, gamma, ru, kh);
         if (fb && fb < bestFoS) {
           bestFoS = fb; bestCx = cx; bestCy = cy; bestR = R; bestSlices = slices;
         }
@@ -157,13 +157,13 @@ function findCriticalFoS(c, phi, gamma, H, beta, nGrid = 12, nRandom = 150) {
     );
     const slices = discretizeCircle(cx, cy, R, geo, 30);
     if (!slices) continue;
-    const fb = bishopFoS(slices, c, phi, gamma);
+    const fb = bishopFoS(slices, c, phi, gamma, ru, kh);
     if (fb && fb < bestFoS) {
       bestFoS = fb; bestCx = cx; bestCy = cy; bestR = R; bestSlices = slices;
     }
   }
 
-  const fosJ = bestSlices ? janbuFoS(bestSlices, c, phi, gamma) : null;
+  const fosJ = bestSlices ? janbuFoS(bestSlices, c, phi, gamma, ru, kh) : null;
   return {
     FoS_bishop: bestFoS === Infinity ? null : bestFoS,
     FoS_janbu:  fosJ,
@@ -197,8 +197,8 @@ function mulberry32(seed) {
 
 // ── Main entry ────────────────────────────────────────────────────────────
 
-function runLEM(c, phi, E, gamma, beta, H) {
-  const result = findCriticalFoS(c, phi, gamma, H, beta, 12, 150);
+function runLEM(c, phi, E, gamma, beta, H, ru = 0.0, kh = 0.0) {
+  const result = findCriticalFoS(c, phi, gamma, H, beta, ru, kh, 12, 150);
   const u = result.FoS_bishop
     ? estimateDisplacement(result.FoS_bishop, H, E, gamma)
     : null;

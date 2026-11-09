@@ -13,6 +13,10 @@ Implements:
 import numpy as np
 from scipy.optimize import brentq
 import warnings
+import sys
+
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
 warnings.filterwarnings("ignore")
 
 
@@ -154,25 +158,15 @@ def discretize_circle(cx, cy, R, geo, n_slices=30):
 # BISHOP'S SIMPLIFIED METHOD
 # ─────────────────────────────────────────────────────────────────────────────
 
-def bishop_fos(slices, c, phi_deg, gamma):
+def bishop_fos(slices, c, phi_deg, gamma, r_u=0.0, k_h=0.0):
     """
-    Compute FoS by Bishop's Simplified Method (iterative).
+    Compute FoS by Bishop's Simplified Method (iterative) with:
+      - Pore water pressure ratio: r_u = u / (gamma * h)
+      - Pseudo-static horizontal seismic coefficient: k_h (g)
 
     Formula:
-      FoS = Σ [ (c·b + W·tan(φ)) / mα ] / Σ [ W·sin(α) ]
-
-    where  mα = cos(α) + sin(α)·tan(φ)/FoS
-
-    Parameters
-    ----------
-    slices   : list of slice dicts (from discretize_circle)
-    c        : float – cohesion (kPa)
-    phi_deg  : float – friction angle (degrees)
-    gamma    : float – unit weight (kN/m³)
-
-    Returns
-    -------
-    FoS : float (or None if non-convergent)
+      FoS = Σ [ (c·b + W·(1 - r_u)·tan(φ)) / mα ] / Σ [ W·(sin(α) + k_h·cos(α)) ]
+      where mα = cos(α) + sin(α)·tan(φ)/FoS
     """
     phi = np.radians(phi_deg)
     tan_phi = np.tan(phi)
@@ -182,7 +176,7 @@ def bishop_fos(slices, c, phi_deg, gamma):
     alpha_list = [s["alpha"]                        for s in slices]
     b_list     = [s["width"]                        for s in slices]
 
-    sum_driving = sum(W * np.sin(a) for W, a in zip(W_list, alpha_list))
+    sum_driving = sum(W * (np.sin(a) + k_h * np.cos(a)) for W, a in zip(W_list, alpha_list))
     if sum_driving <= 0:
         return None
 
@@ -193,7 +187,7 @@ def bishop_fos(slices, c, phi_deg, gamma):
             m_alpha = np.cos(alpha) + np.sin(alpha) * tan_phi / fos
             if abs(m_alpha) < 1e-6:
                 m_alpha = 1e-6
-            numerator += (c * b + W * tan_phi) / m_alpha
+            numerator += (c * b + W * (1.0 - r_u) * tan_phi) / m_alpha
 
         fos_new = numerator / sum_driving
         if abs(fos_new - fos) < 1e-5:
@@ -208,16 +202,9 @@ def bishop_fos(slices, c, phi_deg, gamma):
 # JANBU'S SIMPLIFIED METHOD
 # ─────────────────────────────────────────────────────────────────────────────
 
-def janbu_fos(slices, c, phi_deg, gamma):
+def janbu_fos(slices, c, phi_deg, gamma, r_u=0.0, k_h=0.0):
     """
-    Compute FoS by Janbu's Simplified Method with correction factor f0.
-
-    Formula:
-      FoS_basic = Σ [ (c·b + W·tan(φ)) / n_α ] / Σ [ W·tan(α) ]
-      FoS = f0 * FoS_basic
-
-    where n_α = cos²(α) * (1 + tan(α)·tan(φ)/FoS)
-    and f0 is Janbu's correction factor ≈ 1 + 0.031*(d/L) for c-φ soils.
+    Compute FoS by Janbu's Simplified Method with r_u and k_h.
     """
     phi = np.radians(phi_deg)
     tan_phi = np.tan(phi)
@@ -226,7 +213,7 @@ def janbu_fos(slices, c, phi_deg, gamma):
     alpha_list = [s["alpha"]                        for s in slices]
     b_list     = [s["width"]                        for s in slices]
 
-    sum_driving = sum(W * np.tan(a) for W, a in zip(W_list, alpha_list))
+    sum_driving = sum(W * np.tan(a) + k_h * W for W, a in zip(W_list, alpha_list))
     if abs(sum_driving) < 1e-6:
         return None
 
@@ -237,7 +224,7 @@ def janbu_fos(slices, c, phi_deg, gamma):
             n_alpha = np.cos(alpha)**2 * (1 + np.tan(alpha) * tan_phi / fos)
             if abs(n_alpha) < 1e-6:
                 n_alpha = 1e-6
-            numerator += (c * b + W * tan_phi) / n_alpha
+            numerator += (c * b + W * (1.0 - r_u) * tan_phi) / n_alpha
 
         fos_new = numerator / sum_driving
         if abs(fos_new - fos) < 1e-5:
@@ -250,10 +237,11 @@ def janbu_fos(slices, c, phi_deg, gamma):
     x_list = [s["x_mid"] for s in slices]
     L = max(x_list) - min(x_list) if len(x_list) > 1 else 1.0
     d_over_L = h_avg / L if L > 0 else 0.1
-    f0 = 1.0 + 0.031 * d_over_L   # simplified correction for c-φ soils
+    f0 = 1.0 + 0.031 * d_over_L
 
     fos_corrected = float(fos * f0)
     return round(fos_corrected, 4) if 0.2 < fos_corrected < 10.0 else None
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -261,37 +249,19 @@ def janbu_fos(slices, c, phi_deg, gamma):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def find_critical_fos(c, phi_deg, gamma, H, beta_deg,
+                      r_u=0.0, k_h=0.0,
                       n_grid=15, n_random=200, n_slices=30,
                       method="bishop"):
     """
     Search for the critical (minimum) FoS by scanning slip circle centres.
-
-    Strategy
-    --------
-    1. Coarse grid search over (cx, cy) space
-    2. Fine random search around best grid point
-    3. Return minimum FoS found
-
-    Parameters
-    ----------
-    method : "bishop" | "janbu" | "both"
-
-    Returns
-    -------
-    dict with 'FoS_bishop', 'FoS_janbu', 'critical_cx', 'critical_cy',
-              'critical_R', 'n_valid_circles'
+    Supports pore pressure ratio r_u and pseudo-static seismic coefficient k_h.
     """
     geo = build_slope_geometry(H, beta_deg)
 
-    # Search bounds for circle centre
-    # cx: from toe to 1.5*horizontal_run
-    # cy: from H to 3*H  (above crest)
     cx_min = geo["toe"][0]   - 0.5 * H
     cx_max = geo["crest"][0] + 0.5 * H
     cy_min = H * 0.5
     cy_max = H * 3.0
-
-    fos_solver = bishop_fos if method == "bishop" else janbu_fos
 
     best_fos   = np.inf
     best_cx    = cx_min
@@ -308,7 +278,6 @@ def find_critical_fos(c, phi_deg, gamma, H, beta_deg,
 
     for cx in cx_vals:
         for cy in cy_vals:
-            # Radius must reach the toe and the crest approximately
             R_min = np.sqrt((cx - geo["toe"][0])**2   + cy**2) * 0.95
             R_max = np.sqrt((cx - geo["toe"][0])**2   + cy**2) * 1.5
             for R in np.linspace(R_min, R_max, 4):
@@ -316,7 +285,7 @@ def find_critical_fos(c, phi_deg, gamma, H, beta_deg,
                 if slices is None:
                     continue
                 n_valid += 1
-                fos_b = bishop_fos(slices, c, phi_deg, gamma)
+                fos_b = bishop_fos(slices, c, phi_deg, gamma, r_u=r_u, k_h=k_h)
                 if fos_b and fos_b < best_fos:
                     best_fos = fos_b
                     best_cx, best_cy, best_R = cx, cy, R
@@ -336,7 +305,7 @@ def find_critical_fos(c, phi_deg, gamma, H, beta_deg,
         if slices is None:
             continue
         n_valid += 1
-        fos_b = bishop_fos(slices, c, phi_deg, gamma)
+        fos_b = bishop_fos(slices, c, phi_deg, gamma, r_u=r_u, k_h=k_h)
         if fos_b and fos_b < best_fos:
             best_fos = fos_b
             best_cx, best_cy, best_R = cx, cy, R_try
@@ -345,7 +314,7 @@ def find_critical_fos(c, phi_deg, gamma, H, beta_deg,
     # ── 3. Compute Janbu FoS at critical circle ───────────────────────────
     slices_best = discretize_circle(best_cx, best_cy, best_R, geo, n_slices)
     if slices_best:
-        fos_janbu_best = janbu_fos(slices_best, c, phi_deg, gamma)
+        fos_janbu_best = janbu_fos(slices_best, c, phi_deg, gamma, r_u=r_u, k_h=k_h)
 
     return {
         "FoS_bishop":     fos_bishop_best,
@@ -400,24 +369,13 @@ def estimate_max_displacement(FoS, H, E_MPa, gamma, c, phi_deg):
 # SINGLE SIMULATION ENTRY POINT
 # ─────────────────────────────────────────────────────────────────────────────
 
-def run_simulation(c, phi, E, gamma, beta, H):
+def run_simulation(c, phi, E, gamma, beta, H, r_u=0.0, k_h=0.0):
     """
     Run a complete LEM simulation for one parameter set.
-
-    Parameters
-    ----------
-    c     : cohesion (kPa)
-    phi   : friction angle (degrees)
-    E     : Young's modulus (MPa)  — used only for displacement estimate
-    gamma : unit weight (kN/m³)
-    beta  : slope angle (degrees)
-    H     : slope height (m)
-
-    Returns
-    -------
-    dict: {FoS_bishop, FoS_janbu, u_max_mm, converged}
+    Supports pore water pressure ratio r_u and seismic acceleration k_h.
     """
     result = find_critical_fos(c, phi, gamma, H, beta,
+                               r_u=r_u, k_h=k_h,
                                n_grid=12, n_random=150, n_slices=30)
 
     fos_b = result["FoS_bishop"]
@@ -425,15 +383,19 @@ def run_simulation(c, phi, E, gamma, beta, H):
 
     if fos_b is None:
         return {"FoS_bishop": None, "FoS_janbu": None,
+                "critical_cx": None, "critical_cy": None, "critical_R": None,
                 "u_max_mm": None, "converged": False}
 
     u_max = estimate_max_displacement(fos_b, H, E, gamma, c, phi)
 
     return {
-        "FoS_bishop": fos_b,
-        "FoS_janbu":  fos_j,
-        "u_max_mm":   u_max,
-        "converged":  True,
+        "FoS_bishop":  fos_b,
+        "FoS_janbu":   fos_j,
+        "critical_cx": round(float(result["critical_cx"]), 3),
+        "critical_cy": round(float(result["critical_cy"]), 3),
+        "critical_R":  round(float(result["critical_R"]), 3),
+        "u_max_mm":    u_max,
+        "converged":   True,
     }
 
 

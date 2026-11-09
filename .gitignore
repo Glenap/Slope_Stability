@@ -55,6 +55,13 @@ logs/
 # ── Vercel ────────────────────────────────────────────────────────
 .vercel/
 
+# ── LaTeX temporary files ─────────────────────────────────────────
+*.aux
+*.lof
+*.lot
+*.out
+*.toc
+
 # ── Node (if ever added) ──────────────────────────────────────────
 node_modules/
 npm-debug.log*
